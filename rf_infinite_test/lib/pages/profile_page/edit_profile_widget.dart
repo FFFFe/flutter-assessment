@@ -257,7 +257,7 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
                           .read<CurrentSelectedContactCubit>()
                           .setCurrentSelectedContact(ContactList(
                             id: contact.id,
-                            email: email.text,
+                            email: email.text.trim(),
                             firstName: firstName.text.trim(),
                             lastName: lastName.text.trim(),
                             avatar: context

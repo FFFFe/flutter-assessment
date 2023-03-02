@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:rf_infinite_test/blocs/contact/contact_bloc.dart';
 import 'package:rf_infinite_test/constants/color.dart';
 import 'package:rf_infinite_test/cubits/media_selector/media_selector_cubit.dart';
 import 'package:rf_infinite_test/gen/assets.gen.dart';
@@ -200,17 +199,18 @@ class _AddContactWidgetState extends State<AddContactWidget> {
 
                         if (_formKey.currentState != null &&
                             _formKey.currentState!.validate()) {
-                          // form.save();
-                          context.read<ContactBloc>().add(AddContactEvent(
-                                  contact: ContactList(
-                                email: email.text,
-                                firstName: firstName.text.trim(),
-                                lastName: lastName.text.trim(),
-                                avatar: context
-                                    .read<MediaSelectorCubit>()
-                                    .state
-                                    .media,
-                              )));
+                          Navigator.pop(
+                            context,
+                            ContactList(
+                              email: email.text.trim(),
+                              firstName: firstName.text.trim(),
+                              lastName: lastName.text.trim(),
+                              avatar: context
+                                  .read<MediaSelectorCubit>()
+                                  .state
+                                  .media,
+                            ),
+                          );
                         }
                       },
                       child: Container(

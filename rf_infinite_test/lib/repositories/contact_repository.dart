@@ -22,11 +22,11 @@ class ContactRepository {
     }
   }
 
-  Future<void> addContact() async {
-    try {
-      await contactApiService.addContact();
-    } catch (e) {
-      throw CustomError(errMsg: e.toString());
-    }
-  }
+  // Future<void> addContact() async {
+  //   try {
+  //     await contactApiService.addContact();
+  //   } catch (e) {
+  //     throw CustomError(errMsg: e.toString());
+  //   }
+  // }
 }

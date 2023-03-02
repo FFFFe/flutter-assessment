@@ -65,12 +65,6 @@ class FilteredContactCubit extends Cubit<FilteredContactState> {
           .toList();
     }
 
-    if (filteredContactList.isNotEmpty) {
-      filteredContactList.sort((a, b) => '${a.firstName} ${a.lastName}'
-          .toLowerCase()
-          .compareTo('${b.firstName} ${b.lastName}'.toLowerCase()));
-    }
-
     emit(state.copyWith(filteredContactList: filteredContactList));
   }
 

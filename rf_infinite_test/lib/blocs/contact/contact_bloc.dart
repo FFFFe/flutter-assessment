@@ -4,6 +4,7 @@ import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:rf_infinite_test/cubits/current_selected_contact/current_selected_contact_cubit.dart';
+import 'package:rf_infinite_test/extensions/extensions.dart';
 import 'package:rf_infinite_test/models/contact.dart';
 import 'package:rf_infinite_test/models/custom_error.dart';
 import 'package:rf_infinite_test/repositories/contact_repository.dart';
@@ -45,12 +46,11 @@ class ContactBloc extends Bloc<ContactEvent, ContactState> with HydratedMixin {
 
   Future<void> _fetchContact(
       FetchContactEvent event, Emitter<ContactState> emit) async {
-    emit(state.copyWith(contactStatus: ContactStatus.loading));
-
     try {
+      emit(state.copyWith(contactStatus: ContactStatus.loading));
+
       final contact = await contactRepository.fetchContact(event.page);
       final List<ContactList> contactList = contact.data;
-      final List<ContactList> newContact = [];
 
       if (contact.page < contact.totalPage) {
         for (int page = contact.page + 1; page <= contact.totalPage; page++) {
@@ -59,18 +59,26 @@ class ContactBloc extends Bloc<ContactEvent, ContactState> with HydratedMixin {
         }
       }
 
+      // check if there is duplicate id from current state data
       if (state.contactList.isNotEmpty) {
-        for (var el in contact.data) {
+        List<ContactList> newContact = [];
+
+        for (var el in contactList) {
           if (state.contactList
               .where((contact) => contact.id == el.id)
               .isEmpty) {
             newContact.add(el);
           }
         }
+
+        newContact = [...state.contactList, ...newContact];
+        newContact.sortContact();
+
         emit(state.copyWith(
-            contactStatus: ContactStatus.loaded,
-            contactList: [...state.contactList, ...newContact]));
+            contactStatus: ContactStatus.loaded, contactList: newContact));
       } else {
+        contactList.sortContact();
+
         emit(state.copyWith(
           contactStatus: ContactStatus.loaded,
           contactList: contactList,
@@ -83,52 +91,82 @@ class ContactBloc extends Bloc<ContactEvent, ContactState> with HydratedMixin {
   }
 
   void _addContact(AddContactEvent event, Emitter<ContactState> emit) {
-    emit(state.copyWith(
-        contactStatus: ContactStatus.loaded,
-        contactList: [...state.contactList, event.contact]));
+    try {
+      emit(state.copyWith(contactStatus: ContactStatus.loading));
+
+      final newContact = [...state.contactList, event.contact];
+      newContact.sortContact();
+
+      emit(state.copyWith(
+          contactStatus: ContactStatus.loaded, contactList: newContact));
+    } catch (e) {
+      emit(state.copyWith(
+          contactStatus: ContactStatus.error,
+          customError: CustomError(errMsg: e.toString())));
+    }
   }
 
   void _deleteContact(DeleteContactEvent event, Emitter<ContactState> emit) {
-    emit(state.copyWith(contactStatus: ContactStatus.loading));
+    try {
+      emit(state.copyWith(contactStatus: ContactStatus.loading));
 
-    final List<ContactList> newContact =
-        state.contactList.where((contact) => contact.id != event.id).toList();
+      final List<ContactList> newContact =
+          state.contactList.where((contact) => contact.id != event.id).toList();
 
-    emit(state.copyWith(
-        contactStatus: ContactStatus.loaded, contactList: newContact));
+      emit(state.copyWith(
+          contactStatus: ContactStatus.loaded, contactList: newContact));
+    } catch (e) {
+      emit(state.copyWith(
+          contactStatus: ContactStatus.error,
+          customError: CustomError(errMsg: e.toString())));
+    }
   }
 
   void _markFavourite(
       MarkFavouriteContactEvent event, Emitter<ContactState> emit) {
-    emit(state.copyWith(contactStatus: ContactStatus.loading));
+    try {
+      emit(state.copyWith(contactStatus: ContactStatus.loading));
 
-    final List<ContactList> newContact = state.contactList.map((contact) {
-      if (event.id == contact.id) {
-        return contact.copyWith(favourite: !contact.favourite);
-      }
-      return contact;
-    }).toList();
+      final List<ContactList> newContact = state.contactList.map((contact) {
+        if (event.id == contact.id) {
+          return contact.copyWith(favourite: !contact.favourite);
+        }
+        return contact;
+      }).toList();
 
-    emit(state.copyWith(
-        contactStatus: ContactStatus.loaded, contactList: newContact));
+      emit(state.copyWith(
+          contactStatus: ContactStatus.loaded, contactList: newContact));
+    } catch (e) {
+      emit(state.copyWith(
+          contactStatus: ContactStatus.error,
+          customError: CustomError(errMsg: e.toString())));
+    }
   }
 
   void _updateContactList(
       UpdateContactEvent event, Emitter<ContactState> emit) {
-    emit(state.copyWith(contactStatus: ContactStatus.loading));
+    try {
+      emit(state.copyWith(contactStatus: ContactStatus.loading));
 
-    final newContact = state.contactList.map(
-      (contact) {
-        if (contact.id ==
-            currentSelectedContactCubit.state.selectedContact.id) {
-          return currentSelectedContactCubit.state.selectedContact;
-        }
-        return contact;
-      },
-    ).toList();
+      final newContact = state.contactList.map(
+        (contact) {
+          if (contact.id ==
+              currentSelectedContactCubit.state.selectedContact.id) {
+            return currentSelectedContactCubit.state.selectedContact;
+          }
+          return contact;
+        },
+      ).toList();
 
-    emit(state.copyWith(
-        contactStatus: ContactStatus.loaded, contactList: newContact));
+      newContact.sortContact();
+
+      emit(state.copyWith(
+          contactStatus: ContactStatus.loaded, contactList: newContact));
+    } catch (e) {
+      emit(state.copyWith(
+          contactStatus: ContactStatus.error,
+          customError: CustomError(errMsg: e.toString())));
+    }
   }
 
   @override
@@ -142,20 +180,25 @@ class ContactBloc extends Bloc<ContactEvent, ContactState> with HydratedMixin {
     } catch (e, stacktrace) {
       print(e);
       print(stacktrace);
+      return null;
     }
   }
 
   @override
   Map<String, dynamic>? toJson(ContactState state) {
     try {
-      print('To Json');
-      print('Contact state: $state');
-      final contactJson = state.toJson();
-      // print('Contact json: $contactJson');
-      return contactJson;
+      if (state.contactStatus == ContactStatus.loaded) {
+        print('To Json');
+        print('Contact state: $state');
+        final contactJson = state.toJson();
+        // print('Contact json: $contactJson');
+        return contactJson;
+      }
+      return null;
     } catch (e, stacktrace) {
       print(e);
       print(stacktrace);
+      return null;
     }
   }
 

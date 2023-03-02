@@ -36,7 +36,7 @@ class _HomePageState extends State<HomePage> {
           showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (_) => AlertDialog(
+              builder: (context) => AlertDialog(
                     content: Row(children: const [
                       Text('Synchonizing contacts...'),
                       SizedBox(width: 10.0),
@@ -54,10 +54,10 @@ class _HomePageState extends State<HomePage> {
           Navigator.pop(context);
           showDialog(
               context: context,
-              builder: (_) => AlertDialog(
-                    content: const Text(
-                      'Failed to synchronize contact! \nTry again later.',
-                      style: TextStyle(height: 1.5),
+              builder: (context) => AlertDialog(
+                    content: Text(
+                      state.customError.errMsg,
+                      style: const TextStyle(height: 1.5),
                     ),
                     actions: [
                       TextButton(
@@ -104,8 +104,8 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            showModalBottomSheet(
+          onPressed: () async {
+            final newContact = await showModalBottomSheet(
               isScrollControlled: true,
               constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.9),
@@ -123,6 +123,14 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             );
+
+            if (mounted && newContact != null) {
+              context.read<ContactBloc>().add(
+                    AddContactEvent(
+                      contact: newContact,
+                    ),
+                  );
+            }
           },
           child: const Icon(
             Icons.add,
